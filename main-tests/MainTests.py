@@ -192,6 +192,9 @@ class PIDThread(threading.Thread):
         self.pid_motors_speeds_update[0] -= self.velocity_diff  # minusy bo silniki zamontowane odwrotnie?
         self.pid_motors_speeds_update[1] -= self.velocity_diff
 
+    # method that updates motors velocity
+    # you can pass velocity to pid_motors_speeds_update in cose to set the velocity on motors without PID controller
+    # turned on
     def update_motors(self):
         #print(self.pid_motors_speeds_update)
         motors_speed_diff_pid[:] = self.pid_motors_speeds_update[:]
@@ -331,6 +334,7 @@ class PadSteeringThread(threading.Thread):
                 self.pid_thread.pid_motors_speeds_update[1] = motor_1_duty
                 self.pid_thread.roll_PID.setSetPoint(roll_offset)
                 self.pid_thread.pitch_PID.setSetPoint(pitch_offset)
+                print(data_frame)
                 #self.pid_thread.depth_PID.setSetPoint(depth_offset)  # can't use without depth funcionalities
 
 
