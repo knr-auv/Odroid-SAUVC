@@ -1,4 +1,8 @@
 # Odroid
+10.11.2019 - Wawrzyniec Mokrogulski
+- added a gripper class in the gripper.py file
+which contains methods allowing to control the gripper
+
 06.11.2019 - Michał Winciorek
 - add new class in autonomy.py file -> a prototype of class 
 which implements all abstract autonoumy and steering methods using objects from MainTests.py
