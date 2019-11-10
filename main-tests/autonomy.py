@@ -1,4 +1,6 @@
 from .connectionOdroid import *
+from .target import Target
+import time
 
 IP_ADDRESS_1 = '10.42.0.158'  # address jetson
 IP_ADDRESS_2 = '192.168.137.208'  # address odroid
@@ -23,11 +25,15 @@ class Autonomy:  # to @Adam & Ernest : ej chłopaki, to narazie sama koncepcja k
         self.objects_centras = []
         # and more like that...
 
+        # aktualny cel do którego zmierzamy
+        self.target = Target()
+
 
     def catch_detections(self):
         while True:
             self.objects_detected_frame = self.conn.getDataFrame()
             # przypisanie wartosci z ramek do tablic w klasie
+            self.target.update_target_position(self.objects_detected_frame)  # aktualizacja targetu
 
     def follow_object(self):
         pass
