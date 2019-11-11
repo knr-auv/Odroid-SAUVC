@@ -86,6 +86,9 @@ class PID:
         self.Kd = Kd
         print(Kp, Ki, Kd)
 
+    def getPIDCoefficients(self):
+        return self.Kp, self.Ki, self.Kd
+
     def setMaxOutput(self, max_output):
         self.max_output = max_output
 
@@ -97,3 +100,6 @@ class PID:
 
     def setSetPoint(self, set_point):
         self.set_point = set_point
+
+    def getSetPoint(self):
+        return self.set_point
