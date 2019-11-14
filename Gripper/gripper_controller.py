@@ -1,9 +1,7 @@
 import logging
-import time
-from threading import Thread, Lock
-
 from gripper import Gripper
-
+from threading import Thread, Lock
+import time
 
 class GripperController:
     def __init__(self):
@@ -80,10 +78,8 @@ class InputListener(Thread):
         Thread.__init__(self)
         self.gripper_controller = GripperController()
         self.gripper_controller.enable()
-        self.failure_listener=FailureListener(self.gripper_controller.gripper)
 
     def run(self):
-        self.failure_listener.start()
         while True:
             s = input()
             try:
@@ -99,27 +95,12 @@ class InputListener(Thread):
                         self.gripper_controller.set_step_mode(m)
                 elif s[0] == 'k':
                     self.gripper_controller.disable()
-                    self.failure_listener.disable()
                     break
             except Exception as e:
                 logging.warning(e)
             finally:
                 time.sleep(0.01)
 
-
-class FailureListener(Thread):
-    def __init__(self, gripper):
-        Thread.__init__(self)
-        self.enable = True
-        self.gripper=gripper
-
-    def run(self):
-        while self.enable == True:
-            if self.gripper.fault==True:
-                time.sleep(3)
-                self.gripper.fault=False
-    def disable(self):
-        self.enable=False
 
 
 if __name__ == '__main__':
