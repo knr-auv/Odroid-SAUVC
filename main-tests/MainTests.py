@@ -7,6 +7,7 @@ import DHT
 #from connectionForTesting import *
 from Integrator import *
 from connectionOdroid import *
+from server import *
 
 # it would be wise to use logging afterwards with more complicated code
 # import logging
@@ -14,11 +15,13 @@ from connectionOdroid import *
 # logging.basicConfig(filename='output.log', level=logging.INFO)
 
 PAD_STEERING_FLAG = False
+PLOT_FLAG = False
 
 IP_ADDRESS_1 = '10.42.0.158'  # address jetson
 IP_ADDRESS_2 = '192.168.137.208'  # address odroid
 
 PAD_PORT = 8181
+PLOT_PORT = 8200
 
 RUN_FORWARD_VALUE = 400.
 
@@ -37,6 +40,9 @@ motors_speed_diff_pid = [0, 0, 0, 0, 0]
 RPY_angles = [0, 0, 0]
 
 run_flag = False
+
+# IMU: roll, pitch, yaw; PID: roll, pitch
+plot_data = [0, 0, 0, 0, 0, 0]
 
 
 class DHTThread(threading.Thread):
@@ -137,7 +143,7 @@ class PIDThread(threading.Thread):
         #TODO: depth_PID object and things related to it
 
         self.integrator = Integrator()
-        global motors_speed_diff_pid
+        global motors_speed_diff_pid, plot_data, PLOT_FLAG
         self.IMU = None
         self.roll_diff, self.pitch_diff, self.yaw_diff, self.velocity_diff = 0, 0, 0, 0
 
@@ -155,6 +161,14 @@ class PIDThread(threading.Thread):
                 self.roll_diff = self.roll_PID.update(self.IMU.getSample('roll'))
                 self.pitch_diff = self.pitch_PID.update(self.IMU.getSample('pitch'))
                 self.yaw_diff = self.yaw_PID.update(self.IMU.getSample('yaw'))  # maybe try:  'gyro_raw_x' 'gro_proc_x'
+
+                if PLOT_FLAG:
+                    plot_data[0] = self.IMU.getSample('roll')
+                    plot_data[1] = self.IMU.getSample('pitch')
+                    plot_data[2] = self.IMU.getSample('yaw')
+                    plot_data[3] = self.roll_PID.getSetPoint()
+                    plot_data[4] = self.pitch_PID.getSetPoint()
+                    plot_data[5] = self.yaw_PID.getSetPoint()
 
                 #self.velocity_diff = self.velocity_PID.update(self.IMU.getSample('vel_x'))
 
@@ -338,6 +352,20 @@ class PadSteeringThread(threading.Thread):
                 #self.pid_thread.depth_PID.setSetPoint(depth_offset)  # can't use without depth funcionalities
 
 
+class PlotThread(threading.Thread):
+    def __init__(self, ip, port):
+        threading.Thread.__init__(self)
+        self.lock = threading.Lock()
+        # stworzenie servera
+        self.server = Server(ip, port)
+        global plot_data
+
+    def run(self):
+        while True:
+            with self.lock:
+                self.server.sendData(self, plot_data)
+
+
 
 
 #motors_control_thread = MotorsControlThread()
@@ -369,5 +397,8 @@ pid_thread.start()
 if PAD_STEERING_FLAG:
     pad_steering_thread.start()
 
+if PLOT_FLAG:
+    plot = PlotThread(IP_ADDRESS_1, PLOT_PORT)
+    plot.start()
 
 ui_thread.start()

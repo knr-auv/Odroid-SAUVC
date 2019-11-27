@@ -95,5 +95,8 @@ class PID:
     def getError(self):
         return self.error
 
+    def getSetPoint(self):
+        return self.set_point
+
     def setSetPoint(self, set_point):
         self.set_point = set_point
