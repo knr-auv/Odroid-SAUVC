@@ -12,6 +12,7 @@ PORT = 8181
 
 lock = threading.Lock()
 
+
 class Autonomy:  # to @Adam & Ernest : ej chłopaki, to narazie sama koncepcja klasy, tu będzie nasze sterowanie
     """Class that implements all autonomy -> methods that will controll AUV depending on
     what cameras see, what they saw and when and also decides in what order perform realising tasks,
@@ -22,7 +23,7 @@ class Autonomy:  # to @Adam & Ernest : ej chłopaki, to narazie sama koncepcja k
         self.pid_thread = pid_thread
         self.pid_follow_obj = PID()
         # dodałem tutah obiekt connection z Jetsonem, ale raczej to zmienię i dodam jako paramert konstruktora
-        #self.conn = Connection(IP_ADDRESS_2, PORT)
+        # self.conn = Connection(IP_ADDRESS_2, PORT)
         self.conn = conn_thread
         self.conn.start()
 
