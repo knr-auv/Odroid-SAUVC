@@ -136,6 +136,9 @@ class PIDThread(threading.Thread):
         self.velocity_PID = PID()
         #TODO: depth_PID object and things related to it
 
+        self.center_x_PID = PID()
+        self.center_x_diff = 0
+
         self.integrator = Integrator()
         global motors_speed_diff_pid
         self.IMU = None
@@ -165,6 +168,7 @@ class PIDThread(threading.Thread):
                 self.roll_control()
                 self.pitch_control()
                 self.yaw_control()
+                self.center_x_control()
                 #self.velocity_control()
                 self.update_motors()
                 time.sleep(0.2)
@@ -191,6 +195,10 @@ class PIDThread(threading.Thread):
     def velocity_control(self):
         self.pid_motors_speeds_update[0] -= self.velocity_diff  # minusy bo silniki zamontowane odwrotnie?
         self.pid_motors_speeds_update[1] -= self.velocity_diff
+
+    def center_x_control(self):
+        self.pid_motors_speeds_update[0] += self.center_x_diff
+        self.pid_motors_speeds_update[1] -= self.center_x_diff
 
     # method that updates motors velocity
     # you can pass velocity to pid_motors_speeds_update in cose to set the velocity on motors without PID controller
