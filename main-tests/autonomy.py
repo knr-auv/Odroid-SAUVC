@@ -48,6 +48,7 @@ class Autonomy:  # to @Adam & Ernest : ej chłopaki, to narazie sama koncepcja k
         while True:
             with lock:
                 self.raw_data_frame = self.conn.getDataFrame()
+                self.target.update_target_position(self.raw_data_frame)
                 # przypisanie wartosci z ramek do tablic w klasie
                 self.objects_frame_cam1 = self.raw_data_frame[0]
                 self.objects_number_cam1 = len(self.objects_frame_cam1)
@@ -68,7 +69,7 @@ class Autonomy:  # to @Adam & Ernest : ej chłopaki, to narazie sama koncepcja k
         self.stop()
         self.pid_thread.yaw_PID.setSetPoint(0.)
         time.sleep(1)
-        while self.objects_number_cam1 <1:
+        while not(self.target.get_flag()):
             yaw = self.imu.getSample('yaw')
             # max angle w stopniach -> zakres 'rozglądania się' łodzi
             search_max_angle_abs = 120.
@@ -80,6 +81,8 @@ class Autonomy:  # to @Adam & Ernest : ej chłopaki, to narazie sama koncepcja k
                 time.sleep(0.5)
 
         # tutaj jakas decyzja ktory obiekt sledzić?
+        # [PRZECZYTAJ] Może od razu szukajmy danego biektu jeśli nie zdnajdziemy w danym czasie zmieniamy cel?
+        # [PRZECZYTAJ] Wymaga dopracowania może jazda do przodu po jakimś czasie i tam się rozejrzenie
         # no i wywołanie śledzenia
 
 
@@ -96,16 +99,21 @@ class Autonomy:  # to @Adam & Ernest : ej chłopaki, to narazie sama koncepcja k
         self.prev_yaw_pid_values = self.pid_thread.yaw_PID.getPIDCoefficients()
         # turn off yaw_PID, żeby mozna bylo sterowac tylko za pomocą offsetu z kamery
         self.pid_thread.yaw_PID.setPIDCoefficients(0., 0., 0.)
-        while self.objects_number_cam1 > 1:
-            self.pid_thread.center_x_PID.setPIDCoefficients(pid_values[0], pid_values[1], pid_values[2])
-            self.pid_thread.center_x_PID.center_x_diff = self.pid_thread.center_x_PID.update(center_offset[0])  # x
-            self.forward(velocity)
+        self.pid_thread.center_x_PID.setPIDCoefficients(pid_values[0], pid_values[1], pid_values[2])
+        while self.target.get_flag():
+            obstacles = self.target.get_obstacles_to_avoid()
+            if len(obstacles) == 0:
+                self.pid_thread.center_x_PID.center_x_diff = self.pid_thread.center_x_PID.update(center_offset[0])  # x
+                self.forward(velocity)
+            else:
+                pass # tu logika do wymijania obiektów
 
-        # jeśli nie widzi obiektów to znowu wywołuje 'rozglądanie się'
+        # jeśli nie widzi obiektu przez dłuższy czas to znowu wywołuje 'rozglądanie się'
         # ora przywroć poprzednie nastawy PID
+        # [PRZECZYTAJ] Warunek wyjścia potrzebny
         self.pid_thread.yaw_PID.setPIDCoefficients(self.prev_yaw_pid_values[0], self.prev_yaw_pid_values[1],
                                                    self.prev_yaw_pid_values[2])
-        self.look_for_detections()
+        # self.look_for_detections()
 
     def forward(self, velocity):
         self.pid_thread.pid_motors_speeds_update[0] = velocity
