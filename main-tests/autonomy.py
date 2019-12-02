@@ -1,7 +1,8 @@
 import threading
 
-from .connectionOdroid import *
 from .PID import *
+from .connectionOdroid import *
+
 IP_ADDRESS_1 = '10.42.0.158'  # address jetson
 IP_ADDRESS_2 = '192.168.137.208'  # address odroid
 PORT = 8181
@@ -112,8 +113,25 @@ class Autonomy:  # to @Adam & Ernest : ej chłopaki, to narazie sama koncepcja k
         self.pid_thread.pid_motors_speeds_update[0] = 0
         self.pid_thread.pid_motors_speeds_update[1] = 0
 
+    """Nawrot i beczka wymagają wprowadzenia licznika liczby obrotów, żeby można było wyregulować po obrocie o 360.
+    Dla nawrotu nalezy w ogole przemapować katy do domyślnych wartości. Licznik concept: zmiana kąta na imu 
+    z 360 do 0 - l+=1, z -360 do 0 l-=1. W ten sposób można byłoby zdeterminować, że obrót został zrobiony czy nie.
+    Na razie przed nawrotem ustawi się do kata 0 osi Z, nastepnie obroci sie o 160 stopni, zeby nie przejsc za 180"""
     def barrel_roll(self):
-        pass
+        self.pid_thread.yaw_PID.setSetPoint(self.pid_thread.roll_PID.getSetPoint + 360)
+        sleep(5)
+        self.pid_thread.yaw_PID.setSetPoint(0)
+
+    def nawrot(self):
+        self.pid_thread.yaw_PID.setSetPoint(0)
+        self.forward(800)
+        sleep(3)
+        self.stop()
+        self.turning_right(160)
+        sleep(3)
+        self.forward(800)
+        sleep(3)
+        self.stop()
 
     def hit_object(self):
         pass
