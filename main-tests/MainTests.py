@@ -15,7 +15,7 @@ from server import *
 # logging.basicConfig(filename='output.log', level=logging.INFO)
 
 PAD_STEERING_FLAG = False
-PLOT_FLAG = True
+PLOT_FLAG = False
 
 IP_ADDRESS_1 = '10.42.0.158'  # address jetson
 IP_ADDRESS_2 = '192.168.137.208'  # address odroid
