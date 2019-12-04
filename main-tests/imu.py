@@ -1,5 +1,5 @@
 import um7
-from connectionForTesting import *
+#from connectionForTesting import *
 import threading
 import time
 from Integrator import *
@@ -173,11 +173,12 @@ class IMUClass():
         return result
 
     def printSamples(self, headerFlag):
+        pass
         # printing in terminal for testing
-        if headerFlag:
-            print(self.hs.format(*self.statevars))
-        print(self.getSample('roll'), ' ', self.getSample('pitch'), ' ', self.getSample('yaw'), ' ',
-              self.getSample('vel_x'))
+        #if headerFlag:
+        #    print(self.hs.format(*self.statevars))
+        #print(self.getSample('roll'), ' ', self.getSample('pitch'), ' ', self.getSample('yaw'), ' ',
+        #      self.getSample('vel_x'))
 
     def startSendingSamples(self, connectionObject):  # without printing
         # this method can be a target -> in Thread constructor
