@@ -4,7 +4,7 @@ import os
 from imu import IMUClass
 from  MotorControl import *
 import DHT
-#from connectionForTesting import *
+# from connectionForTesting import *
 from Integrator import *
 from connectionOdroid import *
 from server import *
@@ -15,7 +15,7 @@ from server import *
 # logging.basicConfig(filename='output.log', level=logging.INFO)
 
 PAD_STEERING_FLAG = False
-PLOT_FLAG = False
+PLOT_FLAG = True
 
 IP_ADDRESS_1 = '10.42.0.158'  # address jetson
 IP_ADDRESS_2 = '192.168.137.208'  # address odroid
@@ -40,9 +40,6 @@ motors_speed_diff_pid = [0, 0, 0, 0, 0]
 RPY_angles = [0, 0, 0]
 
 run_flag = False
-
-# IMU: roll, pitch, yaw; PID: roll, pitch
-plot_data = [0, 0, 0, 0, 0, 0]
 
 
 class DHTThread(threading.Thread):
@@ -107,8 +104,7 @@ class IMUThread(threading.Thread):
     def run(self):
         # will start printing samples (maybe we could run it in another terminal)
         c = 0
-        while True:
-            
+        while True:            
             self.IMU.catchSamples()
             #self.connObj.setDataFrame(self.IMU.getSamples())
             self.IMU.printSamples(c % 50 == 0)
@@ -154,6 +150,8 @@ class PIDThread(threading.Thread):
         self.velocity_PID.setMaxOutput(max_sum_output / 4)
 
         self.pid_motors_speeds_update = [0, 0, 0, 0, 0]
+        if PLOT_FLAG:
+            self.server = Server(IP_ADDRESS_1, PLOT_PORT)
 
     def run(self):
         while True:
@@ -163,12 +161,15 @@ class PIDThread(threading.Thread):
                 self.yaw_diff = self.yaw_PID.update(self.IMU.getSample('yaw'))  # maybe try:  'gyro_raw_x' 'gro_proc_x'
 
                 if PLOT_FLAG:
+                    plot_data = [0, 0, 0, 0, 0, 0]
                     plot_data[0] = self.IMU.getSample('roll')
                     plot_data[1] = self.IMU.getSample('pitch')
                     plot_data[2] = self.IMU.getSample('yaw')
                     plot_data[3] = self.roll_PID.getSetPoint()
                     plot_data[4] = self.pitch_PID.getSetPoint()
                     plot_data[5] = self.yaw_PID.getSetPoint()
+                    self.server.sendData(plot_data)
+                    print(plot_data)
 
                 #self.velocity_diff = self.velocity_PID.update(self.IMU.getSample('vel_x'))
 
@@ -352,21 +353,6 @@ class PadSteeringThread(threading.Thread):
                 #self.pid_thread.depth_PID.setSetPoint(depth_offset)  # can't use without depth funcionalities
 
 
-class PlotThread(threading.Thread):
-    def __init__(self, ip, port):
-        threading.Thread.__init__(self)
-        self.lock = threading.Lock()
-        # stworzenie servera
-        self.server = Server(ip, port)
-        global plot_data
-
-    def run(self):
-        while True:
-            with self.lock:
-                self.server.sendData(self, plot_data)
-
-
-
 
 #motors_control_thread = MotorsControlThread()
 imu = IMUClass('roll', 'pitch', 'yaw', 'accel_proc_x', 'accel_proc_z', 'accel_proc_y','gyro_proc_z' ,'gyro_proc_x', 'gyro_raw_z')
@@ -397,8 +383,6 @@ pid_thread.start()
 if PAD_STEERING_FLAG:
     pad_steering_thread.start()
 
-if PLOT_FLAG:
-    plot = PlotThread(IP_ADDRESS_1, PLOT_PORT)
-    plot.start()
+
 
 ui_thread.start()

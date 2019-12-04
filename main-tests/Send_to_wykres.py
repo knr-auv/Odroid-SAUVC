@@ -3,7 +3,7 @@ import threading
 from server import *
 
 
-IP_ADDRESS_2 = '192.168.137.208'  # address odroid
+IP_ADDRESS_2 = '10.42.0.158'  # address odroid
 
 PLOT_PORT = 8200
 
@@ -12,7 +12,7 @@ plot_data = [0, 0, 0, 0, 0, 0]
 
 class IMUThread(threading.Thread):
 
-    def __init__(self, imu):
+    def __init__(self):
         threading.Thread.__init__(self)
         self.lock = threading.Lock()
 
@@ -27,7 +27,7 @@ class IMUThread(threading.Thread):
 
 class PIDThread(threading.Thread):
 
-    def __init__(self, imu):
+    def __init__(self):
         threading.Thread.__init__(self)
         self.lock = threading.Lock()
 
@@ -54,13 +54,13 @@ class PlotThread(threading.Thread):
         global plot_data
         while True:
             with self.lock:
-                self.server.sendData(self, plot_data)
+                self.server.sendData(plot_data)
                 print(plot_data)
 
 
 imu = IMUThread()
 pid = PIDThread()
-plot = PlotThread()
+plot = PlotThread(IP_ADDRESS_2, PLOT_PORT)
 
 plot.start()
 imu.start()
