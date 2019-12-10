@@ -14,17 +14,17 @@ from connectionOdroid import *
 
 # logging.basicConfig(filename='output.log', level=logging.INFO)
 
-PAD_STEERING_FLAG = True
+PAD_STEERING_FLAG = False
 
 SAVE_FLAG = False
-READ_FLAG = False
+READ_FLAG = True
 MOVES_FILE = "moves.dat"
 
 
 IP_ADDRESS_2 = '10.42.0.158'  # address jetson
 IP_ADDRESS_1 = '192.168.137.208'  # address odroid
 
-PAD_PORT = 8181
+PAD_PORT = 8186
 
 RUN_FORWARD_VALUE = 400.
 
@@ -94,8 +94,8 @@ class MotorsControlThread(threading.Thread):
                     self.motors.run_motor(i, motors_speed[i])
                     #print("silnik {}, wypelnienie {}".format(i, motors_speed[i]))
                     motors_speed[i] = 0    # uncomment
-                    # print("{}:{}".format(motors_names[i], motors_speed[i]), end=" ")    # comment
-                print(motors_speed)
+                    #print("{}:{}".format(motors_names[i], motors_speed[i]), end=" ")    # comment
+                #print(motors_speed)
                 time.sleep(0.2)    # comment
 
 
@@ -183,13 +183,13 @@ class PIDThread(threading.Thread):
 
 
     def roll_control(self):
-        self.pid_motors_speeds_update [4] += self.roll_diff
-        self.pid_motors_speeds_update [2] -= self.roll_diff
+        self.pid_motors_speeds_update [4] -= self.roll_diff
+        self.pid_motors_speeds_update [2] += self.roll_diff
 
     def pitch_control(self):
-        self.pid_motors_speeds_update[2] -= self.pitch_diff  # * 2 / 3
-        self.pid_motors_speeds_update[4] -= self.pitch_diff  # * 2 / 3
-        self.pid_motors_speeds_update[3] += self.pitch_diff
+        self.pid_motors_speeds_update[2] += self.pitch_diff  # * 2 / 3
+        self.pid_motors_speeds_update[4] += self.pitch_diff  # * 2 / 3
+        self.pid_motors_speeds_update[3] -= self.pitch_diff
 
     def yaw_control(self):
         global run_flag
@@ -205,8 +205,8 @@ class PIDThread(threading.Thread):
         self.pid_motors_speeds_update[1] -= self.velocity_diff
 
     def center_x_control(self):
-        self.pid_motors_speeds_update[0] += self.center_x_diff
-        self.pid_motors_speeds_update[1] -= self.center_x_diff
+        self.pid_motors_speeds_update[0] -= self.center_x_diff
+        self.pid_motors_speeds_update[1] += self.center_x_diff
 
     # method that updates motors velocity
     # you can pass velocity to pid_motors_speeds_update in cose to set the velocity on motors without PID controller
@@ -349,11 +349,11 @@ class PadSteeringThread(threading.Thread):
                     #depth_offset = data_frame[4]
                     vertical_duty = data_frame[4] # bez glebokosciomierza
 
-                    self.pid_thread.pid_motors_speeds_update[0] += motor_0_duty
-                    self.pid_thread.pid_motors_speeds_update[1] += motor_1_duty
-                    self.pid_thread.pid_motors_speeds_update[2] += vertical_duty
-                    self.pid_thread.pid_motors_speeds_update[3] += vertical_duty/2
-                    self.pid_thread.pid_motors_speeds_update[4] += vertical_duty/2
+                    self.pid_thread.pid_motors_speeds_update[0] = (-0.5)*motor_0_duty
+                    self.pid_thread.pid_motors_speeds_update[1] = (-0.5)*motor_1_duty
+                    self.pid_thread.pid_motors_speeds_update[2] = 0.3*vertical_duty
+                    self.pid_thread.pid_motors_speeds_update[3] = 0.3*vertical_duty
+                    self.pid_thread.pid_motors_speeds_update[4] = 0.3*vertical_duty
                     self.pid_thread.roll_PID.setSetPoint(roll_offset)
                     self.pid_thread.pitch_PID.setSetPoint(pitch_offset)
                     if SAVE_FLAG:
@@ -408,14 +408,14 @@ class ReadSteeringThread(threading.Thread):
 
                     time.sleep(data_frame[5]) # usypiamy na dany czas
 
-                    self.pid_thread.pid_motors_speeds_update[0] += motor_0_duty
-                    self.pid_thread.pid_motors_speeds_update[1] += motor_1_duty
-                    self.pid_thread.pid_motors_speeds_update[2] += vertical_duty
-                    self.pid_thread.pid_motors_speeds_update[3] += vertical_duty/2
-                    self.pid_thread.pid_motors_speeds_update[4] += vertical_duty/2
+                    self.pid_thread.pid_motors_speeds_update[0] = (-0.5)* motor_0_duty
+                    self.pid_thread.pid_motors_speeds_update[1] = (-0.5)*motor_1_duty
+                    self.pid_thread.pid_motors_speeds_update[2] = 0.3*vertical_duty
+                    self.pid_thread.pid_motors_speeds_update[3] = 0.3*vertical_duty
+                    self.pid_thread.pid_motors_speeds_update[4] = 0.3*vertical_duty
                     self.pid_thread.roll_PID.setSetPoint(roll_offset)
                     self.pid_thread.pitch_PID.setSetPoint(pitch_offset)
-                    # print(data_frame)
+                    print(data_frame)
                     #self.pid_thread.depth_PID.setSetPoint(depth_offset)  # can't use without depth funcionalities
 
 

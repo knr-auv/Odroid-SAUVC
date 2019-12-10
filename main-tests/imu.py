@@ -37,11 +37,11 @@ class IMUClass():
             print('GET_FW_REVISION=' + '{}'.format(self.s1.get_fw_revision()))
             print('ZERO_GYROS ' + 'ok.' if self.s1.zero_gyros() else 'failed.')
             time.sleep(1.1)
-            print('RESET_EKF ' + 'ok.' if self.s1.reset_ekf() else 'failed.')
+            #print('RESET_EKF ' + 'ok.' if self.s1.reset_ekf() else 'failed.')
             print('SET_MAG_REFERENCE ' + 'ok.' if self.s1.set_mag_reference() else 'failed.')
-            time.sleep(1.1)
+            time.sleep(2.1)
 			# print('SET_HOME_POSITION ' + 'ok.' if self.s1.set_home_position() else 'failed.')
-            # print('RESET_EKF ' + 'ok.' if self.s1.reset_ekf() else 'failed.')
+            print('RESET_EKF ' + 'ok.' if self.s1.reset_ekf() else 'failed.')
 
 			# print('FLASH_COMMIT ' + 'ok.' if self.s1.flash_commit() else 'failed.')
         # time.sleep(3)
@@ -103,16 +103,24 @@ class IMUClass():
 
     # method that returns validated and precalculated IMU's state valueas
     def getSample(self, sample):
-        if (sample == 'roll' or sample == 'pitch'):
+        if (sample == 'pitch'):
             state = self.s1.state[sample]
             return self.correctAngles(state)
+        elif ( sample == 'roll'):
+           state = self.s1.state[sample]
+           state = self.correctAngles(state)
+           if state>0:
+               state-=180
+           else:
+               state+=180
+           return state
         elif sample == 'yaw':
-            #state = self.s1.state[sample]
-            state = self.getSample('gyro_raw_z')
-            if state > -self.gyro_filter and state < self.gyro_filter:
-                state = 0
-            return self.correctAngles(self.gyro_integrator.integrate(state)/scipy.pi*18)
-            # return self.correctAngles(state)
+            state = self.s1.state[sample]
+            #state = self.getSample('gyro_raw_z')
+            #if state > -self.gyro_filter and state < self.gyro_filter:
+            #    state = 0
+            #return self.correctAngles(self.gyro_integrator.integrate(state)/scipy.pi*18)
+            return self.correctAngles(state)
             #return self.correctAngles(self.debugDrift(state))
             #return state
 
@@ -177,7 +185,7 @@ class IMUClass():
         # printing in terminal for testing
         #if headerFlag:
         #    print(self.hs.format(*self.statevars))
-        #print(self.getSample('roll'), ' ', self.getSample('pitch'), ' ', self.getSample('yaw'), ' ',
+        #print(self.getSample('roll'), ' ', self.getSample('pitch'), ' ', self.getSample('yaw'))
         #      self.getSample('vel_x'))
 
     def startSendingSamples(self, connectionObject):  # without printing
