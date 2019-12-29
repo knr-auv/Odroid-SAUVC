@@ -1,4 +1,5 @@
 import time
+import datetime
 import threading
 import pickle
 import os
@@ -8,6 +9,7 @@ import DHT
 #from connectionForTesting import *
 from Integrator import *
 from connectionOdroid import *
+import csv
 
 # it would be wise to use logging afterwards with more complicated code
 # import logging
@@ -19,6 +21,8 @@ PAD_STEERING_FLAG = False
 SAVE_FLAG = False
 READ_FLAG = True
 MOVES_FILE = "moves.dat"
+
+CSV_FLAG = True
 
 
 IP_ADDRESS_2 = '10.42.0.158'  # address jetson
@@ -431,6 +435,37 @@ class ReadSteeringThread(threading.Thread):
                     print(data_frame)
                     #self.pid_thread.depth_PID.setSetPoint(depth_offset)  # can't use without depth funcionalities
 
+class CSVSave(threading.Thread):
+    """Thread class that read and save imu date """
+    def __init__(self, pid_thread, imu):
+        threading.Thread.__init__(self)
+        self.lock = threading.Lock()
+        self.pid_thread = pid_thread
+        self.imu = imu
+        self.start_time = time.time()
+        self.file = self._creat_file_name()
+
+    def run(self):
+        with open(self.file, 'w', newline='') as csvfile:
+            fieldnames = ['Time', 'Roll', 'PID_Roll', 'Pitch', 'PID_Pitch', 'Yaw']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            while True:
+                with self.lock:
+                    now = time.time() - self.start_time
+                    roll = self.imu.getSample('roll')
+                    pid_roll = self.pid_thread.roll_PID.getSetPoint()
+                    pitch = self.imu.getSample('pitch')
+                    pid_pitch = self.pid_thread.pitch_PID.getSetPoint()
+                    yaw = self.imu.getSample('yaw')
+                time.sleep(0.2)
+                writer.writerow({'Time': now, 'Roll': roll, 'PID_Roll':pid_roll , 'Pitch':pitch, 'PID_Pitch':pid_pitch, 'Yaw':yaw})
+            
+    def _creat_file_name(self):
+        now = datetime.datetime.now()
+        return "/date/imu{}-{}-{}-{}:{}.csv".format(now.year, now.month, now.day, now.hour, now.minute)
+
+
 
 
 
@@ -448,6 +483,8 @@ imu_thread = IMUThread(imu)
 pid_thread = PIDThread()
 pid_thread.setIMU(imu)
 ui_thread = UIThread(pid_thread)
+if CSV_FLAG:
+    csv_thread = CSVSave(pid_thread, imu)
 if PAD_STEERING_FLAG:
     pad_steering_thread = PadSteeringThread(pid_thread)
 if READ_FLAG:
@@ -464,6 +501,8 @@ imu_thread.start()
 #connThread.start()
 motors_control_thread.start()
 pid_thread.start()
+if CSV_FLAG:
+    csv_thread.start()
 if PAD_STEERING_FLAG:
     pad_steering_thread.start()
 if READ_FLAG:
