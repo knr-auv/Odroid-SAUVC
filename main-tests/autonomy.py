@@ -52,7 +52,7 @@ class Autonomy:  # to @Adam & Ernest : ej chłopaki, to narazie sama koncepcja k
                 self.target.update_target_position(self.raw_data_frame)
                 # przypisanie wartosci z ramek do tablic w klasie
                 self.objects_frame_cam1 = self.raw_data_frame[0]
-                self.objects_number_cam1 = len(self.objects_frame_cam1)
+                self.objects_number_cam1 = len(self.objects_frame_camio1)
                 self.objects_frame_cam2 = self.raw_data_frame[1]
                 self.objects_number_cam2 = len(self.objects_frame_cam2)
 
