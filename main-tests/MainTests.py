@@ -8,6 +8,7 @@ import DHT
 #from connectionForTesting import *
 from Integrator import *
 from connectionOdroid import *
+from server import Server
 
 # it would be wise to use logging afterwards with more complicated code
 # import logging
@@ -147,6 +148,10 @@ class PIDThread(threading.Thread):
         self.velocity_PID = PID()
         #TODO: depth_PID object and things related to it
 
+        #Camera PID
+        self.center_y_PID = PID()
+        self.center_y_diff = 0
+
         self.center_x_PID = PID()
         self.center_x_diff = 0
 
@@ -182,6 +187,7 @@ class PIDThread(threading.Thread):
                 if PAD_STEERING_FLAG or READ_FLAG:
                     self.pad_control()
                 self.center_x_control()
+                self.center_y_control()
                 #self.velocity_control()
                 self.update_motors()
                 time.sleep(0.2)
@@ -219,6 +225,11 @@ class PIDThread(threading.Thread):
     def center_x_control(self):
         self.pid_motors_speeds_update[0] -= self.center_x_diff
         self.pid_motors_speeds_update[1] += self.center_x_diff
+
+    def center_y_control(self):
+        self.pid_motors_speeds_update[2] += self.center_y_diff
+        self.pid_motors_speeds_update[3] += self.center_y_diff
+        self.pid_motors_speeds_update[4] += self.center_y_diff
 
     # method that updates motors velocity
     # you can pass velocity to pid_motors_speeds_update in cose to set the velocity on motors without PID controller
@@ -430,6 +441,38 @@ class ReadSteeringThread(threading.Thread):
                     self.pid_thread.pitch_PID.setSetPoint(pitch_offset)
                     print(data_frame)
                     #self.pid_thread.depth_PID.setSetPoint(depth_offset)  # can't use without depth funcionalities
+
+
+class AutonomyTest(threading.Thread):
+    """Thread class that is primitive autonomy"""
+    def __init__(self, pid_thread):
+        threading.Thread.__init__(self)
+        self.lock = threading.Lock()
+        self.pid_thread = pid_thread
+        self.last_time = time.time()
+
+        global run_flag
+
+        # strojenie regulatorow #hardcoded
+        self.pid_thread.roll_PID.setPIDCoefficients(4, 2, 2) # zahardkodowane narazie # nastawy  z testow
+        self.pid_thread.pitch_PID.setPIDCoefficients(10, 2, 1)
+        self.pid_thread.yaw_PID.setPIDCoefficients(0, 0, 0) # zera, bo horyzontalnymi silnikami sterujemy tylko padem
+        self.pid_thread.center_x_PID.setPIDCoefficients(0, 0, 0)
+        self.pid_thread.center_y_PID.setPIDCoefficients(0, 0, 0)
+
+        self.server = Server(IP_ADDRESS_2, PORT)
+
+    def run(self):
+        while True:
+            date_frame = self.server.receiveData()
+            if len(date_frame[0]):
+                with self.lock:
+                    self.pid_thread.center_y_diff = self.pid_thread.center_y_PID.update(date_frame[0][])
+                    self.pid_thread.center_x_diff = self.pid_thread.center_x_PID.update(date_frame[0][])
+                if date_frame:
+                    run_flag = True
+                else:
+                    run_flag = False
 
 
 
