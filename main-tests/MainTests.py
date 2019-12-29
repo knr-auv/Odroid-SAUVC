@@ -1,5 +1,6 @@
 import time
 import threading
+import pickle
 import os
 from imu import IMUClass
 from  MotorControl import *
@@ -13,12 +14,17 @@ from connectionOdroid import *
 
 # logging.basicConfig(filename='output.log', level=logging.INFO)
 
-PAD_STEERING_FLAG = True
+PAD_STEERING_FLAG = False
+
+SAVE_FLAG = False
+READ_FLAG = True
+MOVES_FILE = "moves.dat"
+
 
 IP_ADDRESS_2 = '10.42.0.158'  # address jetson
 IP_ADDRESS_1 = '192.168.137.208'  # address odroid
 
-PAD_PORT = 8181
+PAD_PORT = 8186
 
 RUN_FORWARD_VALUE = 400.
 
@@ -32,6 +38,9 @@ motors_speed = [0, 0, 0, 0, 0]
 
 # list of changes to motors' speeds made by PIDs
 motors_speed_diff_pid = [0, 0, 0, 0, 0]
+
+# list of changes to motors' speeds made by pad
+motors_speed_pad = [0, 0, 0, 0, 0]
 
 # roll, pitch, yaw angles
 RPY_angles = [0, 0, 0]
@@ -88,8 +97,8 @@ class MotorsControlThread(threading.Thread):
                     self.motors.run_motor(i, motors_speed[i])
                     #print("silnik {}, wypelnienie {}".format(i, motors_speed[i]))
                     motors_speed[i] = 0    # uncomment
-                    # print("{}:{}".format(motors_names[i], motors_speed[i]), end=" ")    # comment
-                print(motors_speed)
+                    #print("{}:{}".format(motors_names[i], motors_speed[i]), end=" ")    # comment
+                #print(motors_speed)
                 time.sleep(0.2)    # comment
 
 
@@ -142,7 +151,7 @@ class PIDThread(threading.Thread):
         self.center_x_diff = 0
 
         self.integrator = Integrator()
-        global motors_speed_diff_pid
+        global motors_speed_diff_pid, motors_speed_pad
         self.IMU = None
         self.roll_diff, self.pitch_diff, self.yaw_diff, self.velocity_diff = 0, 0, 0, 0
 
@@ -170,6 +179,8 @@ class PIDThread(threading.Thread):
                 self.roll_control()
                 self.pitch_control()
                 self.yaw_control()
+                if PAD_STEERING_FLAG or READ_FLAG:
+                    self.pad_control()
                 self.center_x_control()
                 #self.velocity_control()
                 self.update_motors()
@@ -177,21 +188,28 @@ class PIDThread(threading.Thread):
 
 
     def roll_control(self):
-        self.pid_motors_speeds_update [4] += self.roll_diff
-        self.pid_motors_speeds_update [2] -= self.roll_diff
+        self.pid_motors_speeds_update [4] -= self.roll_diff
+        self.pid_motors_speeds_update [2] += self.roll_diff
 
     def pitch_control(self):
-        self.pid_motors_speeds_update[2] -= self.pitch_diff  # * 2 / 3
-        self.pid_motors_speeds_update[4] -= self.pitch_diff  # * 2 / 3
-        self.pid_motors_speeds_update[3] += self.pitch_diff
+        self.pid_motors_speeds_update[2] += self.pitch_diff  # * 2 / 3
+        self.pid_motors_speeds_update[4] += self.pitch_diff  # * 2 / 3
+        self.pid_motors_speeds_update[3] -= self.pitch_diff
 
     def yaw_control(self):
         global run_flag
         self.pid_motors_speeds_update[0] += self.yaw_diff
         self.pid_motors_speeds_update[1] -= self.yaw_diff
         if run_flag:
-            self.pid_thread.pid_motors_speeds_update[0] += RUN_FORWARD_VALUE
-            self.pid_thread.pid_motors_speeds_update[1] += RUN_FORWARD_VALUE
+            self.pid_motors_speeds_update[0] += RUN_FORWARD_VALUE
+            self.pid_motors_speeds_update[1] += RUN_FORWARD_VALUE
+
+    def pad_control(self):
+        self.pid_motors_speeds_update[0] += motors_speed_pad[0]
+        self.pid_motors_speeds_update[1] += motors_speed_pad[1]
+        self.pid_motors_speeds_update[2] += motors_speed_pad[2]
+        self.pid_motors_speeds_update[3] += motors_speed_pad[3]
+        self.pid_motors_speeds_update[4] += motors_speed_pad[4]
 
     # not used yet
     def velocity_control(self):
@@ -199,8 +217,8 @@ class PIDThread(threading.Thread):
         self.pid_motors_speeds_update[1] -= self.velocity_diff
 
     def center_x_control(self):
-        self.pid_motors_speeds_update[0] += self.center_x_diff
-        self.pid_motors_speeds_update[1] -= self.center_x_diff
+        self.pid_motors_speeds_update[0] -= self.center_x_diff
+        self.pid_motors_speeds_update[1] += self.center_x_diff
 
     # method that updates motors velocity
     # you can pass velocity to pid_motors_speeds_update in cose to set the velocity on motors without PID controller
@@ -317,6 +335,7 @@ class PadSteeringThread(threading.Thread):
         threading.Thread.__init__(self)
         self.lock = threading.Lock()
         self.pid_thread = pid_thread
+        self.last_time = time.time()
 
         # stworzenie wątków do odczytu danych z pada
         self.connection = Connection(IP_ADDRESS_2, PAD_PORT)
@@ -329,11 +348,11 @@ class PadSteeringThread(threading.Thread):
         pid_thread.yaw_PID.setPIDCoefficients(0, 0, 0) # zera, bo horyzontalnymi silnikami sterujemy tylko padem
 
     def run(self):
-        global motors_speed, run_flag
+        global motors_speed, motors_speed_pad, run_flag
         self.connection.start()
         while True:
+            data_frame = self.connection.getDataFrame()
             with self.lock:
-                data_frame = self.connection.getDataFrame()
                 if len(data_frame) == 5:
                     motor_0_duty = data_frame[0]
                     motor_1_duty = data_frame[1]
@@ -342,15 +361,76 @@ class PadSteeringThread(threading.Thread):
                     #depth_offset = data_frame[4]
                     vertical_duty = data_frame[4] # bez glebokosciomierza
 
-                    self.pid_thread.pid_motors_speeds_update[0] += motor_0_duty
-                    self.pid_thread.pid_motors_speeds_update[1] += motor_1_duty
-                    self.pid_thread.pid_motors_speeds_update[2] += vertical_duty
-                    self.pid_thread.pid_motors_speeds_update[3] += vertical_duty/2
-                    self.pid_thread.pid_motors_speeds_update[4] += vertical_duty/2
+                    motors_speed_pad[0] = (-0.5)*motor_0_duty
+                    motors_speed_pad[1] = (-0.5)*motor_1_duty
+                    motors_speed_pad[2] = 0.3*vertical_duty
+                    motors_speed_pad[3] = 0.3*vertical_duty
+                    motors_speed_pad[4] = 0.3*vertical_duty
                     self.pid_thread.roll_PID.setSetPoint(roll_offset)
                     self.pid_thread.pitch_PID.setSetPoint(pitch_offset)
+                    if SAVE_FLAG:
+                        self.save(data_frame)
                     # print(data_frame)
                     #self.pid_thread.depth_PID.setSetPoint(depth_offset)  # can't use without depth funcionalities
+
+    def save(self, data_frame):
+        with open(MOVES_FILE, 'ab') as file:
+            data_frame.append(time.time()-self.last_time)
+            self.last_time = time.time()
+            file.write(pickle.dumps(data_frame))
+
+
+class ReadSteeringThread(threading.Thread):
+    """Thread class that play primitive steering by commands from file """
+    def __init__(self, pid_thread):
+        threading.Thread.__init__(self)
+        self.lock = threading.Lock()
+        self.pid_thread = pid_thread
+        self.file = None
+
+        # strojenie regulatorow #hardcoded
+        pid_thread.roll_PID.setPIDCoefficients(4, 2, 2) # zahardkodowane narazie # nastawy  z testow
+        pid_thread.pitch_PID.setPIDCoefficients(10, 2, 1)
+        pid_thread.yaw_PID.setPIDCoefficients(0, 0, 0) # zera, bo horyzontalnymi silnikami sterujemy tylko plikiem
+
+    def run(self):
+        global motors_speed, run_flag, motors_speed_pad
+        self.file = open(MOVES_FILE, "rb")
+        while True:
+            try:
+                data_frame = pickle.load(self.file)
+                #print(data_frame)
+            except(EOFError, pickle.UnpicklingError):
+                with self.lock:
+                    self.pid_thread.pid_motors_speeds_update[0] = 0
+                    self.pid_thread.pid_motors_speeds_update[1] = 0
+                    self.pid_thread.pid_motors_speeds_update[2] = 0
+                    self.pid_thread.pid_motors_speeds_update[3] = 0
+                    self.pid_thread.pid_motors_speeds_update[4] = 0
+                    #print("KONIEC")
+                    break
+
+            with self.lock:
+               if len(data_frame) == 6:
+                    motor_0_duty = data_frame[0]
+                    motor_1_duty = data_frame[1]
+                    roll_offset = data_frame[2]
+                    pitch_offset = data_frame[3]
+                    #depth_offset = data_frame[4]
+                    vertical_duty = data_frame[4] # bez glebokosciomierza
+
+                    time.sleep(data_frame[5]) # usypiamy na dany czas
+
+                    motors_speed_pad[0] = (-0.5)*motor_0_duty
+                    motors_speed_pad[1] = (-0.5)*motor_1_duty
+                    motors_speed_pad[2] = 0.3*vertical_duty
+                    motors_speed_pad[3] = 0.3*vertical_duty
+                    motors_speed_pad[4] = 0.3*vertical_duty
+                    self.pid_thread.roll_PID.setSetPoint(roll_offset)
+                    self.pid_thread.pitch_PID.setSetPoint(pitch_offset)
+                    print(data_frame)
+                    #self.pid_thread.depth_PID.setSetPoint(depth_offset)  # can't use without depth funcionalities
+
 
 
 
@@ -370,6 +450,9 @@ pid_thread.setIMU(imu)
 ui_thread = UIThread(pid_thread)
 if PAD_STEERING_FLAG:
     pad_steering_thread = PadSteeringThread(pid_thread)
+if READ_FLAG:
+    read_steering_flag = ReadSteeringThread(pid_thread)
+
 
 # opening another terminal and executing output.log tailing
 # os.system("gnome-terminal -e 'tail -f output.log'")   # works on PC Ubuntu
@@ -383,6 +466,7 @@ motors_control_thread.start()
 pid_thread.start()
 if PAD_STEERING_FLAG:
     pad_steering_thread.start()
-
+if READ_FLAG:
+    read_steering_flag.start()
 
 ui_thread.start()

@@ -45,7 +45,7 @@ class Autonomy:  # to @Adam & Ernest : ej chłopaki, to narazie sama koncepcja k
 
 
     def catch_detections(self):
-        # łapanie ramek danych i wpisywanie ich w pola, których bedziemy uzywać do sterowania
+        # łapanie ramek danych i wpisywanie ich w pola, których bedziemy uzywac do sterowania
         while True:
             with lock:
                 self.raw_data_frame = self.conn.getDataFrame()
@@ -65,7 +65,7 @@ class Autonomy:  # to @Adam & Ernest : ej chłopaki, to narazie sama koncepcja k
 
     def look_for_detections(self):
         #self.prev_pid_values = self.pid_thread.center_x_PID.getPIDCoefficients()
-        # wyłącz yaw_pid, aby móc się rozejrzeć
+        # wylacz yaw_pid, aby móc się rozejrzec
         #self.pid_thread.center_x_PID
         self.stop()
         self.pid_thread.yaw_PID.setSetPoint(0.)
@@ -81,10 +81,10 @@ class Autonomy:  # to @Adam & Ernest : ej chłopaki, to narazie sama koncepcja k
                 self.turning_right(1.)  # 1 deg/sec
                 time.sleep(0.5)
 
-        # tutaj jakas decyzja ktory obiekt sledzić?
-        # [PRZECZYTAJ] Może od razu szukajmy danego biektu jeśli nie zdnajdziemy w danym czasie zmieniamy cel?
-        # [PRZECZYTAJ] Wymaga dopracowania może jazda do przodu po jakimś czasie i tam się rozejrzenie
-        # no i wywołanie śledzenia
+        # tutaj jakas decyzja ktory obiekt sledzic?
+        # [PRZECZYTAJ] Moze od razu szukajmy danego biektu jesli nie zdnajdziemy w danym czasie zmieniamy cel?
+        # [PRZECZYTAJ] Wymaga dopracowania moze jazda do przodu po jakims czasie i tam się rozejrzenie
+        # no i wywolanie sledzenia
 
 
     def turning_left(self, vel):
@@ -107,10 +107,10 @@ class Autonomy:  # to @Adam & Ernest : ej chłopaki, to narazie sama koncepcja k
                 self.pid_thread.center_x_PID.center_x_diff = self.pid_thread.center_x_PID.update(center_offset[0])  # x
                 self.forward(velocity)
             else:
-                pass # tu logika do wymijania obiektów
+                pass # tu logika do wymijania obiektow
 
-        # jeśli nie widzi obiektu przez dłuższy czas to znowu wywołuje 'rozglądanie się'
-        # ora przywroć poprzednie nastawy PID
+        # jeśli nie widzi obiektu przez dłuzszy czas to znowu wywołuje 'rozgladanie sie'
+        # ora przywroc poprzednie nastawy PID
         # [PRZECZYTAJ] Warunek wyjścia potrzebny
         self.pid_thread.yaw_PID.setPIDCoefficients(self.prev_yaw_pid_values[0], self.prev_yaw_pid_values[1],
                                                    self.prev_yaw_pid_values[2])
@@ -128,10 +128,10 @@ class Autonomy:  # to @Adam & Ernest : ej chłopaki, to narazie sama koncepcja k
         self.pid_thread.pid_motors_speeds_update[0] = 0
         self.pid_thread.pid_motors_speeds_update[1] = 0
 
-    """Nawrot i beczka wymagają wprowadzenia licznika liczby obrotów, żeby można było wyregulować po obrocie o 360.
-    Dla nawrotu nalezy w ogole przemapować katy do domyślnych wartości. Licznik concept: zmiana kąta na imu 
-    z 360 do 0 - l+=1, z -360 do 0 l-=1. W ten sposób można byłoby zdeterminować, że obrót został zrobiony czy nie.
-    Na razie przed nawrotem ustawi się do kata 0 osi Z, nastepnie obroci sie o 160 stopni, zeby nie przejsc za 180"""
+    """Nawrot i beczka wymagaja wprowadzenia licznika liczby obrotow, zeby mozna bylo wyregulowac po obrocie o 360.
+    Dla nawrotu nalezy w ogole przemapowac katy do domyslnych wartosci. Licznik concept: zmiana kata na imu 
+    z 360 do 0 - l+=1, z -360 do 0 l-=1. W ten sposob mozna byloby zdeterminowac, że obrot zostal zrobiony czy nie.
+    Na razie przed nawrotem ustawi sie do kata 0 osi Z, nastepnie obroci sie o 160 stopni, zeby nie przejsc za 180"""
     def barrel_roll(self):
         self.pid_thread.yaw_PID.setSetPoint(self.pid_thread.roll_PID.getSetPoint + 360)
         sleep(5)
