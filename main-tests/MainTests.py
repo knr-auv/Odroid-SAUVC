@@ -16,16 +16,16 @@ import csv
 
 # logging.basicConfig(filename='output.log', level=logging.INFO)
 
-PAD_STEERING_FLAG = False
+PAD_STEERING_FLAG = True
 
 SAVE_FLAG = False
-READ_FLAG = True
+READ_FLAG = False
 MOVES_FILE = "moves.dat"
 
 CSV_FLAG = True
 
 
-IP_ADDRESS_2 = '10.42.0.158'  # address jetson
+IP_ADDRESS_2 = '10.41.0.4'  # address jetson
 IP_ADDRESS_1 = '192.168.137.208'  # address odroid
 
 PAD_PORT = 8186
