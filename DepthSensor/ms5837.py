@@ -59,6 +59,7 @@ class MS5837(object):
         
         self._fluidDensity = DENSITY_FRESHWATER
         self._pressure = 0
+        self._referencePressure=1013.25
         self._temperature = 0
         self._D1 = 0
         self._D2 = 0
@@ -87,7 +88,10 @@ class MS5837(object):
             return False
         
         return True
-        
+
+    def setRefferencePressure(self, p):
+        self._referencePressure=p
+
     def read(self, oversampling=OSR_8192):
         if self._bus is None:
             print("No bus!")
@@ -143,11 +147,11 @@ class MS5837(object):
         
     # Depth relative to MSL pressure in given fluid density
     def depth(self):
-        return (self.pressure(UNITS_Pa)-101300)/(self._fluidDensity*9.80665)
+        return (self.pressure(UNITS_Pa) - self._referencePressure * 100) / (self._fluidDensity * 9.80665)
     
     # Altitude relative to MSL pressure
     def altitude(self):
-        return (1-pow((self.pressure()/1013.25),.190284))*145366.45*.3048        
+        return (1 - pow((self.pressure() / self._referencePressure), .190284)) * 145366.45 * .3048
     
     # Cribbed from datasheet
     def _calculate(self):
